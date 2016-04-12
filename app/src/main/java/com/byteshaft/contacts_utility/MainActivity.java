@@ -20,6 +20,7 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity {
@@ -91,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected String doInBackground(String... params) {
-            if (Helpers.isNetworkAvailable(getApplicationContext()) && Helpers.isInternetWorking()) {
+            if (Helpers.isNetworkAvailable() && Helpers.isInternetWorking()) {
                 contacts();
             } else {
                 noInternet = true;
@@ -123,54 +124,55 @@ public class MainActivity extends AppCompatActivity {
                 String id = cur.getString(cur.getColumnIndex(ContactsContract.Contacts._ID));
                 String name = cur.getString(cur.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
                 if (Integer.parseInt(cur.getString(cur.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER))) > 0) {
-                    System.out.println("name : " + name + ", ID : " + id);
-                    dataHashMap.put("name", name);
-                    // get the phone number
-                    Cursor pCur = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,null,
-                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
-                            new String[]{id}, null);
-                    while (pCur.moveToNext()) {
-                        String phone = pCur.getString(
-                                pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                        String type = pCur.getString(
-                                pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE));
-                        System.out.println("phone" + phone + " " + "type" + type);
-                        if (type != null && type.equals("1") && phone != null) {
-                            dataHashMap.put("home_phone", phone);
+                    if (!Helpers.containsData(name + "_" + id)) {
+                        System.out.println("name : " + name + ", ID : " + id);
+                        dataHashMap.put("name", name);
+                        // get the phone number
+                        Cursor pCur = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
+                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                                new String[]{id}, null);
+                        while (pCur.moveToNext()) {
+                            String phone = pCur.getString(
+                                    pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                            String type = pCur.getString(
+                                    pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE));
+                            System.out.println("phone" + phone + " " + "type" + type);
+                            if (type != null && type.equals("1") && phone != null) {
+                                dataHashMap.put("home_phone", phone);
+                            }
+                            if (type != null && type.equals("2") && phone != null) {
+                                dataHashMap.put("work_phone", phone);
+                            }
                         }
-                        if (type != null && type.equals("2") && phone != null) {
-                            dataHashMap.put("work_phone", phone);
+                        pCur.close();
+
+
+                        // get email and type
+
+                        Cursor emailCur = cr.query(
+                                ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                                null,
+                                ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
+                                new String[]{id}, null);
+                        while (emailCur.moveToNext()) {
+                            // This would allow you get several email addresses
+                            // if the email addresses were stored in an array
+                            String email = emailCur.getString(
+                                    emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
+                            String emailType = emailCur.getString(
+                                    emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
+
+                            System.out.println("Email " + email + " Email Type : " + emailType);
+                            if (emailType != null && emailType.equals("1") && email != null) {
+                                dataHashMap.put("home_email", email);
+                            }
+                            if (emailType != null && emailType.equals("2") && email != null) {
+                                dataHashMap.put("work_email", email);
+                            }
                         }
-                    }
-                    pCur.close();
+                        emailCur.close();
 
-
-                    // get email and type
-
-                    Cursor emailCur = cr.query(
-                            ContactsContract.CommonDataKinds.Email.CONTENT_URI,
-                            null,
-                            ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
-                            new String[]{id}, null);
-                    while (emailCur.moveToNext()) {
-                        // This would allow you get several email addresses
-                        // if the email addresses were stored in an array
-                        String email = emailCur.getString(
-                                emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
-                        String emailType = emailCur.getString(
-                                emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
-
-                        System.out.println("Email " + email + " Email Type : " + emailType);
-                        if (emailType != null && emailType.equals("1") && email != null) {
-                            dataHashMap.put("home_email", email);
-                        }
-                        if (emailType != null && emailType.equals("2") && email != null) {
-                            dataHashMap.put("work_email", email);
-                        }
-                    }
-                    emailCur.close();
-
-                    // Get note.......
+                        // Get note.......
 //                    String noteWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
 //                    String[] noteWhereParams = new String[]{id,
 //                            ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE};
@@ -181,60 +183,60 @@ public class MainActivity extends AppCompatActivity {
 //                    }
 //                    noteCur.close();
 
-                    //Get Postal Address....
+                        //Get Postal Address....
 
-                    String addrWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
-                    String[] addrWhereParams = new String[]{id,
-                            ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE};
-                    Cursor addrCur = cr.query(ContactsContract.Data.CONTENT_URI,
-                            null, null, null, null);
-                    while(addrCur.moveToNext()) {
-                        String poBox = addrCur.getString(
-                                addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.POBOX));
-                        String street = addrCur.getString(
-                                addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.STREET));
-                        String city = addrCur.getString(
-                                addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.CITY));
-                        String state = addrCur.getString(
-                                addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.REGION));
-                        String postalCode = addrCur.getString(
-                                addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE));
-                        String country = addrCur.getString(
-                                addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY));
-                        String type = addrCur.getString(
-                                addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.TYPE));
-                        Log.i("Address", "pobox, " + poBox + " street" + street + " city " + city
-                                + " state " + state + "postolcode" + postalCode
-                                + " country "+ country+ " type "+ type);
-                        StringBuilder stringBuilder = new StringBuilder();
-                        if (poBox != null) {
-                            stringBuilder.append(" " + poBox + " ");
-                        }
-                        if (street != null) {
-                            stringBuilder.append(" " + street + " ");
-                        }
-                        if (city != null) {
-                            stringBuilder.append(" " + city + " ");
-                        }
-                        if (state != null) {
-                            stringBuilder.append(" " + state + " ");
-                        }
-                        if (postalCode != null) {
-                            stringBuilder.append(" " + postalCode + " ");
-                        }
-                        if (country != null) {
-                            stringBuilder.append(" " + country + " ");
-                        }
-                        if (type != null && type.equals("1")) {
-                            dataHashMap.put("home_address", stringBuilder.toString());
-                        }
-                        if (type != null && type.equals("2")) {
-                            dataHashMap.put("work_address", stringBuilder.toString());
-                        }
-                        // Do something with these....
+                        String addrWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
+                        String[] addrWhereParams = new String[]{id,
+                                ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE};
+                        Cursor addrCur = cr.query(ContactsContract.Data.CONTENT_URI,
+                                null, null, null, null);
+                        while (addrCur.moveToNext()) {
+                            String poBox = addrCur.getString(
+                                    addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.POBOX));
+                            String street = addrCur.getString(
+                                    addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.STREET));
+                            String city = addrCur.getString(
+                                    addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.CITY));
+                            String state = addrCur.getString(
+                                    addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.REGION));
+                            String postalCode = addrCur.getString(
+                                    addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE));
+                            String country = addrCur.getString(
+                                    addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY));
+                            String type = addrCur.getString(
+                                    addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.TYPE));
+                            Log.i("Address", "pobox, " + poBox + " street" + street + " city " + city
+                                    + " state " + state + "postolcode" + postalCode
+                                    + " country " + country + " type " + type);
+                            StringBuilder stringBuilder = new StringBuilder();
+                            if (poBox != null) {
+                                stringBuilder.append(" " + poBox + " ");
+                            }
+                            if (street != null) {
+                                stringBuilder.append(" " + street + " ");
+                            }
+                            if (city != null) {
+                                stringBuilder.append(" " + city + " ");
+                            }
+                            if (state != null) {
+                                stringBuilder.append(" " + state + " ");
+                            }
+                            if (postalCode != null) {
+                                stringBuilder.append(" " + postalCode + " ");
+                            }
+                            if (country != null) {
+                                stringBuilder.append(" " + country + " ");
+                            }
+                            if (type != null && type.equals("1")) {
+                                dataHashMap.put("home_address", stringBuilder.toString());
+                            }
+                            if (type != null && type.equals("2")) {
+                                dataHashMap.put("work_address", stringBuilder.toString());
+                            }
+                            // Do something with these....
 
-                    }
-                    addrCur.close();
+                        }
+                        addrCur.close();
 
 //                    // Get Instant Messenger.........
 //                    String imWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
@@ -252,43 +254,47 @@ public class MainActivity extends AppCompatActivity {
 //                    }
 //                    imCur.close();
 
-                    // Get Organizations.........
+                        // Get Organizations.........
 
-                    String orgWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
-                    String[] orgWhereParams = new String[]{id,
-                            ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE};
-                    Cursor orgCur = cr.query(ContactsContract.Data.CONTENT_URI,
-                            null, orgWhere, orgWhereParams, null);
-                    if (orgCur.moveToFirst()) {
-                        String orgName = orgCur.getString(orgCur.getColumnIndex(ContactsContract.CommonDataKinds.Organization.DATA));
-                        String title = orgCur.getString(orgCur.getColumnIndex(ContactsContract.CommonDataKinds.Organization.TITLE));
-                        Log.i("TAG", " orgName " +orgName + " title " + title);
-                        if (title != null) {
-                            dataHashMap.put("title", title);
+                        String orgWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
+                        String[] orgWhereParams = new String[]{id,
+                                ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE};
+                        Cursor orgCur = cr.query(ContactsContract.Data.CONTENT_URI,
+                                null, orgWhere, orgWhereParams, null);
+                        if (orgCur.moveToFirst()) {
+                            String orgName = orgCur.getString(orgCur.getColumnIndex(ContactsContract.CommonDataKinds.Organization.DATA));
+                            String title = orgCur.getString(orgCur.getColumnIndex(ContactsContract.CommonDataKinds.Organization.TITLE));
+                            Log.i("TAG", " orgName " + orgName + " title " + title);
+                            if (title != null) {
+                                dataHashMap.put("title", title);
+                            }
+                            if (orgName != null) {
+                                dataHashMap.put("org", orgName);
+                            }
                         }
-                        if (orgName != null) {
-                            dataHashMap.put("org", orgName);
-                        }
-                    }
-                    orgCur.close();
+                        orgCur.close();
 
-                    Cursor cursor = getContactsBirthdays();
-                    int bDayColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Event.START_DATE);
-                    while (cursor.moveToNext()) {
-                        String bDay = cursor.getString(bDayColumn);
-                        Log.d(TAG, "Birthday: " + bDay);
-                        if (bDay != null) {
-                            dataHashMap.put("bd", bDay);
+                        Cursor cursor = getContactsBirthdays();
+                        int bDayColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Event.START_DATE);
+                        while (cursor.moveToNext()) {
+                            String bDay = cursor.getString(bDayColumn);
+                            Log.d(TAG, "Birthday: " + bDay);
+                            if (bDay != null) {
+                                dataHashMap.put("bd", bDay);
+                            }
                         }
+                        cursor.close();
+                        try {
+                            int responseCode = Helpers.authPostRequest(dataHashMap);
+                            if (responseCode == HttpURLConnection.HTTP_CREATED) {
+                                Helpers.saveContactStatus(name+"_"+id, true);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        System.out.println(dataHashMap.toString());
                     }
-                    cursor.close();
                 }
-                try {
-                    Helpers.authPostRequest(dataHashMap);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                System.out.println(dataHashMap.toString());
             }
         }
         cur.close();

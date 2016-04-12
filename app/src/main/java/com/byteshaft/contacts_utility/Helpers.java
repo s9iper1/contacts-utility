@@ -2,10 +2,11 @@ package com.byteshaft.contacts_utility;
 
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.preference.PreferenceManager;
 import android.util.Base64;
-import android.util.Log;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -17,7 +18,7 @@ public class Helpers {
 
     private static final String link = "http://45.55.212.164/api/add_contact";
 
-    public static void authPostRequest(HashMap<String, String> hashMap) throws IOException {
+    public static int authPostRequest(HashMap<String, String> hashMap) throws IOException {
         URL url;
         url = new URL(link);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -72,12 +73,7 @@ public class Helpers {
                 title, name, home_phone,
                 work_phone);
         sendRequestData(connection, jsonFormattedData);
-        System.out.println(connection.getResponseCode());
-        if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-            Log.i("Log", "connection:" + connection.getResponseCode());
-        } else if (connection.getResponseCode() == HttpURLConnection.HTTP_CREATED) {
-            Log.i("Log", "created" + connection.getResponseCode());
-        }
+        return connection.getResponseCode();
     }
 
     private static String getJsonObjectString(String address_home, String address_work,
@@ -98,9 +94,9 @@ public class Helpers {
         os.close();
     }
 
-    public static boolean isNetworkAvailable(Context context) {
+    public static boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager)
-                context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                AppGlobals.getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = cm.getActiveNetworkInfo();
         return networkInfo != null && networkInfo.isConnected();
     }
@@ -118,5 +114,21 @@ public class Helpers {
             e.printStackTrace();
         }
         return success;
+    }
+
+    // get default sharedPreferences.
+    private static SharedPreferences getPreferenceManager() {
+        return PreferenceManager.getDefaultSharedPreferences(AppGlobals.getContext());
+    }
+
+    // Method to get String value from sharedPreference requires key as parameter
+    public static boolean containsData(String key) {
+        SharedPreferences sharedPreferences = getPreferenceManager();
+        return sharedPreferences.contains(key);
+    }
+
+    public static void saveContactStatus(String key, boolean value) {
+        SharedPreferences sharedPreferences = getPreferenceManager();
+        sharedPreferences.edit().putBoolean(key, value).apply();
     }
 }
