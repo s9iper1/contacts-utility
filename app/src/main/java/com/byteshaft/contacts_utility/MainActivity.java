@@ -81,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
 
     class LoadContacts extends AsyncTask<String, String, String> {
 
+        private boolean noInternet = false;
+
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
@@ -89,13 +91,22 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected String doInBackground(String... params) {
-            contacts();
+            if (Helpers.isNetworkAvailable(getApplicationContext()) && Helpers.isInternetWorking()){
+                contacts();
+            } else {
+                noInternet = true;
+            }
             return null;
         }
 
         @Override
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
+            if (noInternet) {
+                Toast.makeText(getApplicationContext(), "No internet", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "Success", Toast.LENGTH_SHORT).show();
+            }
             mProgressbar.setVisibility(View.GONE);
         }
     }
