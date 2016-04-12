@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected String doInBackground(String... params) {
-            if (Helpers.isNetworkAvailable(getApplicationContext()) && Helpers.isInternetWorking()){
+            if (Helpers.isNetworkAvailable(getApplicationContext()) && Helpers.isInternetWorking()) {
                 contacts();
             } else {
                 noInternet = true;
